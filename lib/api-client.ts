@@ -1,12 +1,18 @@
 /**
  * API client for Document Processing Platform backend.
- * Uses BACKEND_API_URL (server) or NEXT_PUBLIC_API_URL (client) when set; see IMPLEMENTATION_PLAN Phase 0.3.
+ * Uses NEXT_PUBLIC_API_URL (client) or BACKEND_API_URL (server) when set.
+ * When unset in the browser, uses same-origin so Next.js can proxy to backend (see app/api/[...path]/route.ts).
+ * When unset on server, uses localhost:3000 for local backend.
  */
 
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  process.env.BACKEND_API_URL ??
-  (typeof window !== "undefined" ? "http://localhost:3000" : "http://localhost:3000");
+function getBackendApiUrl(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL ?? "";
+  }
+  return process.env.BACKEND_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+}
+
+const BACKEND_API_URL = getBackendApiUrl();
 
 export type ApiSuccess<T> = { success: true; data: T };
 export type ApiError = { success: false; error: string; code?: string };
