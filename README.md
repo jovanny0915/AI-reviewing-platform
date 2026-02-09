@@ -71,8 +71,8 @@ Phase 0 is implemented. Setup:
 
 4. **Install & run:**
    ```bash
-   pnpm install
-   pnpm dev
+   npm install
+   npm run dev
    ```
    The frontend calls `/api/documents` and `/api/upload` on the same origin.
 
@@ -90,11 +90,15 @@ Phase 0 is implemented. Setup:
 
 6. **Run both:**
    ```bash
+   # Option 1: Single command (from project root)
+   npm run dev:all
+
+   # Option 2: Separate terminals
    # Terminal 1: Backend
-   cd backend && pnpm install && pnpm dev
+   cd backend && npm install && npm run dev
 
    # Terminal 2: Frontend
-   pnpm dev
+   npm run dev
    ```
 
 **API routes:**
@@ -107,6 +111,11 @@ Phase 0 is implemented. Setup:
 ## Run Locally
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm run dev
+```
+
+To run both frontend and backend together:
+```bash
+npm run dev:all
 ```
