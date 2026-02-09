@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +49,7 @@ const documentMeta = {
 
 type PendingRect = { startX: number; startY: number; endX: number; endY: number } | null;
 
-export default function ViewerPage() {
+function ViewerContent() {
   const searchParams = useSearchParams();
   const documentId = searchParams.get("id");
   const [doc, setDoc] = useState<DocumentWithFamily | null>(null);
@@ -456,5 +456,24 @@ export default function ViewerPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function ViewerPageFallback() {
+  return (
+    <AppShell title="Document Viewer">
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="text-muted-foreground">Loading viewer…</span>
+      </div>
+    </AppShell>
+  );
+}
+
+export default function ViewerPage() {
+  return (
+    <Suspense fallback={<ViewerPageFallback />}>
+      <ViewerContent />
+    </Suspense>
   );
 }
