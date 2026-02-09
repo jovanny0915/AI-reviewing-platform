@@ -1,3 +1,3 @@
 {
-  "buildCommand": "pnpm run build:all"
+  "buildCommand": "pnpm run build"
 }
