@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",
+    "dev:all": "concurrently -n fe,be -c blue,green \"pnpm run dev\" \"pnpm run dev --prefix backend\"",
     "build": "next build",
+    "build:all": "pnpm run build --prefix backend && pnpm run build",
     "start": "next start",
+    "start:all": "concurrently -n fe,be -c blue,green \"pnpm run start\" \"pnpm run start --prefix backend\"",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -61,6 +64,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22",
     "@types/react": "^19",
