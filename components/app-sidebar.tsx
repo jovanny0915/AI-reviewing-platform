@@ -43,15 +43,13 @@ export function AppSidebar() {
           className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center"
         >
           <Image
-            src="/litreview-logo.svg"
+            src="/litreview-logo.png"
             alt="LitReview"
-            width={32}
-            height={32}
-            className="shrink-0 rounded-lg"
+            width={200}
+            height={56}
+            className="w-full h-auto max-h-12 object-contain shrink-0 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:max-h-none group-data-[collapsible=icon]:object-contain"
+            priority
           />
-          <span className="text-lg font-semibold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            LitReview
-          </span>
         </Link>
       </SidebarHeader>
       <SidebarSeparator className="bg-sidebar-border/80" />
