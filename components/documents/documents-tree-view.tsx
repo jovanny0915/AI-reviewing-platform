@@ -253,7 +253,12 @@ function FolderPickItem({
   );
 }
 
-export function DocumentsTreeView() {
+export type DocumentsTreeViewProps = {
+  selectedDocIds: Set<string>;
+  setSelectedDocIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+};
+
+export function DocumentsTreeView({ selectedDocIds, setSelectedDocIds }: DocumentsTreeViewProps) {
   const [folders, setFolders] = useState<FolderNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -268,7 +273,6 @@ export function DocumentsTreeView() {
   const [moveTargetFolderId, setMoveTargetFolderId] = useState<string | null>(null);
   const [folderDocs, setFolderDocs] = useState<FamilyGroup[]>([]);
   const [folderDocsLoading, setFolderDocsLoading] = useState(false);
-  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [moveDocsSaving, setMoveDocsSaving] = useState(false);
   const [includeSubfolders, setIncludeSubfolders] = useState(false);
   const { toast } = useToast();

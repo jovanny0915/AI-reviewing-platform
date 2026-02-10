@@ -51,8 +51,11 @@ import {
   getProductionDownload,
   getProductionAuditReport,
   listFolders,
+  listInboundProductions,
+  startInboundImport,
   type ProductionRecord,
   type FolderNode,
+  type InboundProductionRecord,
 } from "@/lib/api-client";
 
 function flattenFolders(nodes: FolderNode[], level = 0): { id: string; name: string; indent: string }[] {
@@ -82,6 +85,17 @@ export default function ProductionsPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
 
+  // Import tab state
+  const [imports, setImports] = useState<InboundProductionRecord[]>([]);
+  const [importsLoading, setImportsLoading] = useState(false);
+  const [importFormName, setImportFormName] = useState("");
+  const [importFormParty, setImportFormParty] = useState("");
+  const [importFormTiffPath, setImportFormTiffPath] = useState("");
+  const [importDatFile, setImportDatFile] = useState<File | null>(null);
+  const [importOptFile, setImportOptFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
   const fetchProductions = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     const res = await listProductions();
@@ -92,9 +106,22 @@ export default function ProductionsPage() {
     if (showLoading) setLoading(false);
   }, []);
 
+  const fetchImports = useCallback(async (showLoading = true) => {
+    if (showLoading) setImportsLoading(true);
+    const res = await listInboundProductions();
+    if (res.success) {
+      setImports(res.data.imports);
+    }
+    if (showLoading) setImportsLoading(false);
+  }, []);
+
   useEffect(() => {
     fetchProductions();
   }, [fetchProductions]);
+
+  useEffect(() => {
+    fetchImports();
+  }, [fetchImports]);
 
   // Poll while any production is pending or processing so status updates (pending → processing → complete) are visible
   const hasActiveJob = productions.some(
@@ -194,6 +221,45 @@ export default function ProductionsPage() {
       }
     } finally {
       setAuditId(null);
+    }
+  };
+
+  const handleStartImport = async () => {
+    if (!importFormName.trim()) {
+      setImportError("Production name is required.");
+      return;
+    }
+    if (!importDatFile) {
+      setImportError("DAT file is required.");
+      return;
+    }
+    if (!importFormTiffPath.trim()) {
+      setImportError("TIFF base path is required (e.g. VOL001/ or C:\\Images\\).");
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    try {
+      const formData = new FormData();
+      formData.set("name", importFormName.trim());
+      if (importFormParty.trim()) formData.set("producing_party", importFormParty.trim());
+      formData.set("tiff_base_path", importFormTiffPath.trim());
+      formData.append("dat", importDatFile);
+      if (importOptFile) formData.append("opt", importOptFile);
+      const res = await startInboundImport(formData);
+      if (!res.success) {
+        setImportError(res.error);
+        return;
+      }
+      setImportOpen(false);
+      setImportFormName("");
+      setImportFormParty("");
+      setImportFormTiffPath("");
+      setImportDatFile(null);
+      setImportOptFile(null);
+      await fetchImports();
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -460,11 +526,11 @@ export default function ProductionsPage() {
         <TabsContent value="incoming" className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Import opposing party productions with DAT/OPT load files (Phase 8)
+              Import opposing party productions by uploading DAT/OPT load files and providing the TIFF volume path.
             </p>
             <Dialog open={importOpen} onOpenChange={setImportOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button variant="outline">
                   <Upload className="mr-2 h-4 w-4" />
                   Import Production
                 </Button>
@@ -473,32 +539,80 @@ export default function ProductionsPage() {
                 <DialogHeader>
                   <DialogTitle>Import Load Files</DialogTitle>
                   <DialogDescription>
-                    Upload DAT and OPT files from opposing party production. Coming in Phase 8.
+                    Upload a DAT file (required) and optional OPT file from the opposing party production, then enter the base path where TIFF images are located.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col gap-4">
-                  <Input placeholder="Production name" disabled />
-                  <Input placeholder="Producing party" disabled />
-                  <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
-                    <FileText className="mx-auto h-6 w-6 text-muted-foreground" />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Drop DAT + OPT files here (Phase 8)
-                    </p>
-                    <Button variant="outline" size="sm" className="mt-2 bg-transparent" disabled>
-                      Browse
-                    </Button>
+                  <div>
+                    <Label htmlFor="import-name">Production name</Label>
+                    <Input
+                      id="import-name"
+                      placeholder="e.g. Smith First Production"
+                      value={importFormName}
+                      onChange={(e) => setImportFormName(e.target.value)}
+                    />
                   </div>
-                  <Select disabled>
-                    <SelectTrigger>
-                      <SelectValue placeholder="TIFF volume path" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="vol1">VOL001/</SelectItem>
-                      <SelectItem value="vol2">VOL002/</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={() => setImportOpen(false)} disabled>
-                    <Upload className="mr-2 h-4 w-4" />
+                  <div>
+                    <Label htmlFor="import-party">Producing party (optional)</Label>
+                    <Input
+                      id="import-party"
+                      placeholder="e.g. Smith Corp"
+                      value={importFormParty}
+                      onChange={(e) => setImportFormParty(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>DAT file (required)</Label>
+                    <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
+                      <Input
+                        type="file"
+                        accept=".dat,.txt"
+                        className="border-0 file:mr-2 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground"
+                        onChange={(e) => setImportDatFile(e.target.files?.[0] ?? null)}
+                      />
+                      {importDatFile && (
+                        <p className="mt-1 text-xs text-muted-foreground">{importDatFile.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>OPT file (optional)</Label>
+                    <div className="rounded-lg border border-border p-3">
+                      <Input
+                        type="file"
+                        accept=".opt,.txt"
+                        className="border-0 file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1"
+                        onChange={(e) => setImportOptFile(e.target.files?.[0] ?? null)}
+                      />
+                      {importOptFile && (
+                        <p className="mt-1 text-xs text-muted-foreground">{importOptFile.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="import-tiff">TIFF base path</Label>
+                    <Input
+                      id="import-tiff"
+                      placeholder="e.g. VOL001/ or C:\Images\Production1\"
+                      value={importFormTiffPath}
+                      onChange={(e) => setImportFormTiffPath(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Base path for image paths in the load file (relative or absolute).
+                    </p>
+                  </div>
+                  {importError && (
+                    <div className="flex items-center gap-2 text-destructive text-sm">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {importError}
+                    </div>
+                  )}
+                  <Button onClick={handleStartImport} disabled={importing}>
+                    {importing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
                     Start Import
                   </Button>
                 </div>
@@ -506,28 +620,76 @@ export default function ProductionsPage() {
             </Dialog>
           </div>
 
-          <Card>
+          <Card className="shadow-card rounded-xl border-border/80 overflow-hidden">
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Production</TableHead>
-                    <TableHead className="w-24">Party</TableHead>
-                    <TableHead className="w-24">DAT</TableHead>
-                    <TableHead className="w-24">OPT</TableHead>
-                    <TableHead className="w-16">Docs</TableHead>
-                    <TableHead className="w-24">Status</TableHead>
-                    <TableHead className="w-24">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      Inbound production import will be available in Phase 8.
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {importsLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading import history…</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Production</TableHead>
+                      <TableHead className="w-24">Party</TableHead>
+                      <TableHead className="w-16">Docs</TableHead>
+                      <TableHead className="w-24">Status</TableHead>
+                      <TableHead className="w-24">Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {imports.length === 0 && !importsLoading && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          No imports yet. Use Import Production to upload DAT/OPT load files.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {imports.map((imp) => (
+                      <TableRow key={imp.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{imp.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(imp.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {imp.producing_party ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">{imp.document_count}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              imp.status === "complete"
+                                ? "secondary"
+                                : imp.status === "failed"
+                                  ? "destructive"
+                                  : "default"
+                            }
+                            className="text-xs"
+                          >
+                            {imp.status}
+                          </Badge>
+                          {imp.status === "failed" && imp.error_message && (
+                            <p className="text-xs text-destructive mt-1 truncate max-w-[180px]" title={imp.error_message}>
+                              {imp.error_message}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(imp.created_at).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

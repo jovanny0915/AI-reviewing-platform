@@ -198,6 +198,8 @@ This document merges the client’s updated requirements with a phased implement
 
 **Deliverable:** Productions with TIFFs, Bates, DAT/OPT, placeholders; hash validation and audit report.
 
+**Phase 7 implementation status:** Backend and UI for *outgoing* productions are implemented: create production, start job, TIFF conversion (or placeholder), Bates stamping, DAT/OPT *generation* and write to storage, download signed URLs for load files, export audit report. Production job runs via queue; load file *generation* is in `lib/loadfile.ts` (backend). **Note:** “Importing” load files (reading opposing-party DAT/OPT) is Phase 8, not Phase 7.
+
 ---
 
 ## Phase 8: Inbound Productions (Opposing Party)
@@ -212,6 +214,8 @@ This document merges the client’s updated requirements with a phased implement
 | 8.4 | **UI** | Import tab: upload DAT/OPT and TIFF location; run import; history and errors; inbound docs in same grid/search. |
 
 **Deliverable:** Inbound productions imported with metadata and families; Bates preserved; reviewable with internal docs.
+
+**Phase 8 implementation status:** **Implemented.** The productions page has an “Import Load Files” tab as a stub only (disabled form, placeholder message). **Database:** Migration `20250209135000_phase8_inbound_productions.sql` adds `inbound_productions`, `inbound_production_documents`, and `documents.inbound_production_id` for import jobs and Bates-preserved linkage. **Still required:** (8.1) DAT/OPT *parser* in backend (e.g. `lib/loadfile-parser.ts`) to *read* Concordance DAT and Opticon OPT and map to internal metadata (Bates, custodian, date, image path); (8.2) TIFF handling—resolve image paths, store or link TIFFs, associate pages to document rows, preserve Bates; (8.3) `POST /api/productions/import` accepting load file(s) + TIFF location, creating documents and metadata, attaching TIFF pages; (8.4) Import UI—working form and import history with status/errors. See §11 and `docs/PHASE8_TESTING.md` for checklist.
 
 ---
 
@@ -301,7 +305,7 @@ Security enforced at ingestion, review, and production layers.
 - **Node backend:** Routes: `/api/documents`, `/api/upload`, `/api/folders`, `/api/search`, `/api/redactions`, `/api/productions`, `/api/productions/import`, `/api/ai`. Use Supabase server client; optional Prisma/Drizzle.
 - **Frontend:** `fetch(NEXT_PUBLIC_API_URL + '/api/...')` for all document/folder/search/production/AI; Supabase client only for auth if used.
 - **Supabase:** RLS on documents, folders, audit_log; matter_id in all relevant tables.
-- **Services (backend):** e.g. `lib/storage.ts`, `lib/ocr.ts` (Tesseract/Textract), `lib/tika.ts`, `lib/email-parser.ts`, `lib/search.ts`, `lib/production-tiff.ts`, `lib/loadfile-parser.ts`, `lib/embeddings.ts`, `lib/llm.ts`, `lib/audit.ts`.
-- **Jobs:** `lib/jobs/` or `workers/` for OCR, metadata, production, import, embedding.
+- **Services (backend):** e.g. `lib/storage.ts`, `lib/ocr.ts` (Tesseract/Textract), `lib/tika.ts`, `lib/email-parser.ts`, `lib/search.ts`, `lib/production-tiff.ts`, `lib/loadfile.ts` (Phase 7: DAT/OPT *generation*), `lib/loadfile-parser.ts` (Phase 8: DAT/OPT *parsing* for inbound productions), `lib/embeddings.ts`, `lib/llm.ts`, `lib/audit.ts`.
+- **Jobs:** `lib/jobs/` or `workers/` for OCR, metadata, production (Phase 7), **production import** (Phase 8), embedding.
 
 Use this plan as the single source of truth when implementing features. Adjust phase order or task splits to match team size and client priorities.

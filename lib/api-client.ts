@@ -56,6 +56,41 @@ async function request<T>(
   return json as ApiSuccess<T>;
 }
 
+/** POST with FormData (e.g. file upload). Do not set Content-Type so browser sets multipart boundary. */
+async function requestFormData<T>(
+  path: string,
+  formData: FormData
+): Promise<ApiResponse<T>> {
+  const url = `${BACKEND_API_URL}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      body: formData,
+      headers: {},
+    });
+  } catch (err) {
+    const message =
+      err instanceof TypeError && err.message === "Failed to fetch"
+        ? "Backend unreachable. Is the API server running?"
+        : err instanceof Error
+          ? err.message
+          : "Network error";
+    return { success: false, error: message, code: "NETWORK_ERROR" };
+  }
+  let json: ApiResponse<T> | { error?: string };
+  try {
+    json = (await res.json()) as ApiResponse<T> | { error?: string };
+  } catch {
+    return { success: false, error: "Invalid response from server", code: "INVALID_RESPONSE" };
+  }
+  if (!res.ok) {
+    const err = json as ApiError;
+    return { success: false, error: err.error ?? "Request failed", code: err.code };
+  }
+  return json as ApiSuccess<T>;
+}
+
 export type ProcessingStatus =
   | "pending"
   | "processing"
@@ -547,6 +582,58 @@ export async function getProductionDownload(
   id: string
 ): Promise<ApiResponse<ProductionDownloadUrls>> {
   return request<ProductionDownloadUrls>(`/api/productions/${id}/download`);
+}
+
+// --- Phase 8: Inbound productions (import load files) ---
+
+export type InboundProductionRecord = {
+  id: string;
+  matter_id: string | null;
+  name: string;
+  producing_party: string | null;
+  status: string;
+  dat_storage_path: string | null;
+  opt_storage_path: string | null;
+  tiff_base_path: string | null;
+  error_message: string | null;
+  document_count: number;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export async function listInboundProductions(params?: {
+  matter_id?: string;
+  status?: string;
+}): Promise<ApiResponse<{ imports: InboundProductionRecord[]; total: number }>> {
+  const sp = new URLSearchParams();
+  if (params?.matter_id) sp.set("matter_id", params.matter_id);
+  if (params?.status) sp.set("status", params.status);
+  const qs = sp.toString();
+  return request<{ imports: InboundProductionRecord[]; total: number }>(
+    `/api/productions/import${qs ? `?${qs}` : ""}`
+  );
+}
+
+export async function getInboundProduction(
+  id: string
+): Promise<ApiResponse<InboundProductionRecord>> {
+  return request<InboundProductionRecord>(`/api/productions/import/${id}`);
+}
+
+export async function startInboundImport(formData: FormData): Promise<
+  ApiResponse<{
+    id: string;
+    status: string;
+    document_count: number;
+    error_message: string | null;
+  }>
+> {
+  return requestFormData<{
+    id: string;
+    status: string;
+    document_count: number;
+    error_message: string | null;
+  }>("/api/productions/import", formData);
 }
 
 // --- Phase 9: AI-Assisted Review (human-in-the-loop only) ---
