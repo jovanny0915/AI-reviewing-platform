@@ -47,6 +47,15 @@ import {
 } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 
+/** Classify doc for file-type counts (must match viewer logic). */
+function getFileTypeCategory(doc: DocumentRecord): "document" | "pdf" | "image" {
+  const mime = (doc.file_type ?? doc.mime_type ?? "").toLowerCase();
+  const name = doc.original_filename ?? doc.filename ?? "";
+  if (mime.includes("pdf") || /\.pdf$/i.test(name)) return "pdf";
+  if (mime.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name)) return "image";
+  return "document";
+}
+
 function FolderItem({
   folder,
   depth = 0,
@@ -342,6 +351,18 @@ export default function FoldersPage() {
   };
 
   const allDocs = folderDocs.flatMap((fg) => [fg.parent, ...fg.children]);
+  const fileTypeCounts = React.useMemo(() => {
+    let document = 0,
+      pdf = 0,
+      image = 0;
+    for (const doc of allDocs) {
+      const cat = getFileTypeCategory(doc);
+      if (cat === "document") document++;
+      else if (cat === "pdf") pdf++;
+      else image++;
+    }
+    return { document, pdf, image };
+  }, [allDocs]);
 
   return (
     <AppShell title="Folders">
@@ -378,6 +399,31 @@ export default function FoldersPage() {
             </Dialog>
           </CardHeader>
           <CardContent className="p-2">
+            {selected && allDocs.length > 0 && (
+              <div className="mb-3 rounded-md border border-border/50 bg-muted/20 px-2 py-2">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">File types in this folder</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-foreground">Document files</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {fileTypeCounts.document}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-foreground">Pdf files</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {fileTypeCounts.pdf}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-foreground">Images files</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {fileTypeCounts.image}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            )}
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
