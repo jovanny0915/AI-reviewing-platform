@@ -30,29 +30,37 @@ async function proxy(request: NextRequest, { path }: { path: string[] }) {
       { status: 503 }
     );
   }
-  const base = BACKEND.replace(/\/$/, "");
-  const pathStr = path.length ? path.join("/") : "";
-  const url = new URL(request.url);
-  const target = `${base}/api/${pathStr}${url.search}`;
-  const headers = new Headers(request.headers);
-  headers.delete("host");
-  const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.text();
-  const res = await fetch(target, {
-    method: request.method,
-    headers,
-    body,
-  });
-  const contentType = res.headers.get("content-type") ?? "";
-  const text = await res.text();
-  if (contentType.includes("application/json")) {
-    try {
-      return NextResponse.json(JSON.parse(text), { status: res.status });
-    } catch {
-      // fallback
+  try {
+    const base = BACKEND.replace(/\/$/, "");
+    const pathStr = path.length ? path.join("/") : "";
+    const url = new URL(request.url);
+    const target = `${base}/api/${pathStr}${url.search}`;
+    const headers = new Headers(request.headers);
+    headers.delete("host");
+    const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.text();
+    const res = await fetch(target, {
+      method: request.method,
+      headers,
+      body,
+    });
+    const contentType = res.headers.get("content-type") ?? "";
+    const text = await res.text();
+    if (contentType.includes("application/json")) {
+      try {
+        return NextResponse.json(JSON.parse(text), { status: res.status });
+      } catch {
+        // fallback
+      }
     }
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "content-type": contentType || "text/plain" },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Backend request failed";
+    return NextResponse.json(
+      { success: false, error: message, code: "PROXY_ERROR" },
+      { status: 502 }
+    );
   }
-  return new NextResponse(text, {
-    status: res.status,
-    headers: { "content-type": contentType || "text/plain" },
-  });
 }
