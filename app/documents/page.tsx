@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +110,7 @@ function CullFolderPickItem({
   );
 }
 
-export default function DocumentsPage() {
+function DocumentsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam = searchParams.get("view");
@@ -519,5 +519,26 @@ export default function DocumentsPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function DocumentsPageFallback() {
+  return (
+    <AppShell title="Documents">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="rounded-lg border border-border/80 bg-muted/30 p-0.5 shadow-sm h-10 w-32 animate-pulse" />
+        </div>
+        <div className="h-64 rounded-xl border border-border/80 bg-muted/20 animate-pulse" />
+      </div>
+    </AppShell>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={<DocumentsPageFallback />}>
+      <DocumentsPageContent />
+    </Suspense>
   );
 }

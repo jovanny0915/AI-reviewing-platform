@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signInWithPassword } from "@/lib/auth/client";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/documents";
@@ -88,5 +88,45 @@ export default function LoginPage() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function LoginFormFallback() {
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardDescription>
+          Sign in with your email and password.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" placeholder="you@example.com" disabled />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" type="password" placeholder="••••••••" disabled />
+        </div>
+        <Button className="w-full" disabled>
+          Sign in
+        </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
+            Sign up
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFormFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
