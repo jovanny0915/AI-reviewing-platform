@@ -63,9 +63,10 @@ Phase 0 is implemented. Setup:
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon public key
    - `SUPABASE_SERVICE_ROLE_KEY` — service_role key (keep secret)
 
-3. **Run migrations** via Supabase Dashboard → SQL Editor:
+3. **Run migrations** via Supabase Dashboard → SQL Editor (or `supabase db push`):
    - Run `supabase/migrations/20250208000000_initial_schema.sql`
    - (Optional) Create Storage bucket "documents" in Dashboard → Storage, then run `supabase/migrations/20250208000001_storage_bucket.sql` for RLS policies. Or let the upload API create the bucket on first upload.
+   - **Auth:** Run `supabase/migrations/20250210000000_auth_profiles.sql` to create the `profiles` table (roles: admin, client) and the trigger that creates a profile on sign-up.
 
 ### Option A: Next.js API routes (simplest)
 

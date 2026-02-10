@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   FileText,
   Search,
-  FolderTree,
   Eye,
   Stamp,
   Brain,
@@ -23,12 +22,12 @@ import {
   SidebarMenuButton,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { AuthMenu } from "@/components/auth-menu";
 
 const navItems = [
   { title: "Documents", href: "/documents", icon: FileText },
   { title: "Viewer", href: "/viewer", icon: Eye },
   { title: "Search", href: "/search", icon: Search },
-  { title: "Folders", href: "/folders", icon: FolderTree },
   { title: "Productions", href: "/productions", icon: Stamp },
   { title: "AI Review", href: "/ai-review", icon: Brain },
 ];
@@ -79,6 +78,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <AuthMenu />
     </Sidebar>
   );
 }
